@@ -1,5 +1,3 @@
-
-
 # Digital Link Resolver (DLR) Design Documentation
 
 ## Table of Contents
@@ -563,4 +561,4 @@ The design enables simple deployment for development and testing, while also sup
 │       └── 98765432109.json
 └── custom-scheme/
     └── ...
-```
+``` 
