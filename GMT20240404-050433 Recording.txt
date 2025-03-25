@@ -1,0 +1,584 @@
+(0:02 - 0:11)
+Thank you. All right. Oh, checking all the hours.
+
+(0:12 - 0:17)
+Anyway, it's recording. I'll send you the link when it's recorded. Yeah, thanks.
+
+(0:19 - 0:26)
+Right. Hello, I'm here. I just have to reply to this email when you have my full attention.
+
+(0:26 - 1:14)
+I'm just, uh, well, I'll kick off while you're doing that. So this is a kickoff meeting for a design phase of work for a couple of weeks to come up with enough design content for the Vietnam team, particularly NAM, to start work on a MVP link resolver. The discussions we've had so far, just over coffee this morning, are about portable technology and about key kind of functional architecture ideas.
+
+(1:15 - 1:56)
+What we need to probably do is start to develop a lightweight architecture document that talks about business use cases, what are we trying to achieve with it, and then kind of functional component decomposition and technical architecture and some security questions. Just enough to be able to kick off some tickets to build. And our thinking is, you know, the goal is lightweight and high performance, as opposed to heavyweight and slow, like the current one.
+
+(1:56 - 2:45)
+But also to support generalized link resolver methods. So there's the idea that we'll have the GS1 link resolution protocol for GTins is just one type of identifier and one type of link resolution protocol, right? And the ISO spec has a couple of other, really, just URL construction patterns. But what I can see is a handful, I don't know, two, three, four, five, link sort of patterns for converting an identifier to a link resolver URL.
+
+(2:45 - 3:19)
+So let's call them link resolution methods, a bit like a DID method. And then there'll be a number of identifier schemes, like ATOs, ABN, and NLIS, and GS1 GTIN, and so on, that will implement one or more of the link resolution methods. So you want this idea that I can find an identifier, figure out what scheme it is, therefore know what link resolution method to apply, and apply it and do it.
+
+(3:19 - 3:59)
+That's all on the kind of configuration and then anonymous user use case. There is, of course, also the how do you get data into the link resolver in the first place, where I think our architecture needs to kind of draw up a picture where the existing registry, whether that's the GS1 registry of GTins or the ATO register of ABNs or whatever it is, it exists, it's got data in it, and it has some sort of authentication mechanism for owners of data to make updates. And that's not the job of the link resolver.
+
+(3:59 - 4:29)
+So that's sitting over there, which means if the link resolver is attached to that registry, then it's that registry when updates happen that may need to update the link resolver. Can I restate that? Yeah. So when we discussed this, what I was imagining as the simplest case is to have a right API with total privileges.
+
+(4:31 - 4:44)
+No concept of users, no concept of fine grained access control. You've just got the right API that can, whatever is publishable is published with that right API. And it's somebody else's problem to figure out who's allowed to do what.
+
+(4:44 - 5:10)
+So for example, if you're publishing a GS1 stuff, then GS1 will have their own system with their own rules and it'll work the way it works. And essentially, it'll then push or sync using the right API to make sure that the link resolver is in a state that they want it to be in. So that way, and if that's wrong, we can change it later.
+
+(5:10 - 5:39)
+But to begin with, a right API with complete privilege is the simplest thing to build. And we can avoid having to do anything with it. Something like this, yeah? Yep.
+
+(5:41 - 5:58)
+Redraw. Yeah. r slash w. Product with barcode or something.
+
+(6:04 - 6:53)
+So some sort of client system. I don't know if I'm drawing this very well. Some out of bounds mechanism by which some system discovers an identifier that it wants to resolve.
+
+(6:56 - 8:01)
+Then that thing needs to know that there is another, this is maybe not in MVP scope, we can hard code this for now, but there's some sort of, what do we call it? A directory of registered schemes. This could be on the UNTP site. Hard coded for now, but maybe later there's a look up, you know, link resolution method, and even maybe a verification method.
+
+(8:07 - 8:48)
+Let's assume that's hard coded in that client system for now. So it finds an ID, goes and says, all right, I know how to resolve that ID, and hits the link resolver with, so this thing constructs the resolved ID and gets back link types. So this thing needs to know for a given scheme what method applies, how it's going to store.
+
+(8:50 - 9:21)
+So this is rewriting the link URLs for a given ID, isn't it? Yep. Yep. And this thing is, so there's a little high performance data store in here, which is basically a list of link types.
+
+(9:21 - 9:45)
+An object store full of JSON or something similar. Links to IDs. Well, just first of all, links, right? Quite separately, it could be, but doesn't have to be, that this identifier owner also publishes credentials.
+
+(9:49 - 10:09)
+In other words, the thing at the other end of the link, of one of these link types. So he can choose to put it somewhere else, right? This thing could be just a link resolver, and this link actually points to, I don't know, the identifier owner's website somewhere else. But there could also be a credential store.
+
+(10:09 - 10:23)
+Do we want to have the credential store coupled with the link resolver? We need credential publishing function. I don't. I think they're quite separate components, but we might bundle them in a product.
+
+(10:24 - 10:59)
+Yeah. If we do bundle them into a product, should that be bundled with VCKit as opposed to the DLR service? Well, no, because I think VCKit is a... Well, it does have a credential store, but whether we want to use that credential store for credential publishing, because I think the point of a credential store for credential publishing, it's only write and delete. And it will sit behind a content delivery network.
+
+(10:59 - 11:39)
+So if we just have a quick chat about technical architecture, can I give a different slide, Dave? Yeah, so that's kind of a functional architecture. The reason to put the credential store, by the way, there is, I think there's a difference between the slow and not necessarily full-time online kind of creating a credential versus the very high available, high durability discovery of that credential, right? So VCKit creates it, but you want to put it somewhere that's, you know, especially if it's building steel material. Well, okay, we still got that, so we can send it later.
+
+(11:39 - 12:15)
+All right. All right, over to Chris. So what I was imagining for a development environment is that we have Docker Compose containing a, with an app container that is basically, whether it's Flask or Python, Flask Python, or whether it's Node, TypeScript, whatever, it depends who's making it.
+
+(12:16 - 12:43)
+Then we have another container, which is MinIO, which is an object store. And so MinIO, if you haven't met it, is an object store with an API that looks exactly like Amazon S3. So you can run it up locally and use it, and it is an analog of Amazon S3.
+
+(12:44 - 13:16)
+And the idea being, so this is the dev environment. Then for the production environment, you might have a content delivery network, which is pointing at a gateway, which is pointing at a serverless framework, I'll do that back to front, which is talking to S3. And so this is a horizontally scalable architecture that's about as cheap as it gets.
+
+(13:18 - 13:35)
+And so the, you know, so users will hit the content delivery network, which will then pass through to the gateway, which will pass, run a Lambda function if it needs to, that'll read from S3 if it needs to. Otherwise, it'll just get everything coming out of CDN. So that's the kind of production architecture.
+
+(13:35 - 14:22)
+This is the development architecture. And so what I was imagining we might have is, I don't know, I had this chat with Ashley about hexagonal architectures, hexagonal architecture pattern, an API which has got various paths that route to a use case function. And the use case function has a repository object, which is responsible for talking to the storage.
+
+(14:24 - 15:30)
+So it's passed to the, and then they both use domain objects and that makes it all, you know, there's unit tests of this that uses, you know, a mock repository object. So that's kind of an architectural pattern that is nice in this Lambda over S3 architecture. So it's not actually important that you do it like that, but at the end of the day, this collection of routes needs to cover off the ISO standard, the GS1 standard, and whatever else we come up with.
+
+(15:33 - 16:42)
+And we also need, and so the question of publishing and editing is really a packaging question because we've got this DLR APIs, which are here. We've got this editing, DLR editing APIs, and we've got this content VC publishing set of APIs, and we've got what is essentially just VC get APIs. And assuming that collection of domain objects and repository objects are the same and reused between them, whether you bundle them up as separate front ends or the same front end doesn't make much difference.
+
+(16:43 - 16:53)
+It's like, yeah, it's just reconfiguring, moving endpoints around. They all import the same libraries. So it's been much of a muchness, whether it's one thing or the next.
+
+(16:54 - 17:32)
+So if this is the technical architecture, we have an assumption that what we have here are paths to JSON files. And so when you go to do one of these link resolutions, the APIs or the repository specifically is able to turn that into a path, read the file, parse it, and do what it needs to do to respond. If that is true, what it really means is this is the only index.
+
+(17:33 - 17:45)
+Accessing a JSON file means traversing something that looks like a file path. I don't call them file paths in object stores because they're being difficult. It looks like a file path to me.
+
+(17:46 - 18:09)
+Slash something, slash something, slash something to a file. So the assumption here is that everything we need to do to implement the digital link resolver endpoints can be done, in the read sense, can be done by traversing a path. That's the big question.
+
+(18:09 - 18:27)
+So that could be wrong. I'm not familiar enough with the digital link resolver API to know if that's true. So I think that's the first thing to test because if it's not true, it's not true because we need to either sort or search through a bunch of files.
+
+(18:28 - 18:49)
+That's the stuff that doesn't scale. So if we have to do something that says get me content from all of the files that meet this criteria and there's a few different versions of that, we'll run into trouble. In that case, we'll need some kind of index to do that search with.
+
+(18:55 - 19:13)
+Go ahead. So two things. One is in our conversation with Phil Archer about this, he was giving us advice about what was the root of the search or the root of the product identifier.
+
+(19:15 - 19:57)
+And I want to confirm that with him to kind of build that out because there is some sort of search. So part of the idea of the link resolver is you have an identity and it might point to several documents, not just one, right? Yeah, but can we maintain that list of several documents for the identity with the right API? Because if so, then it becomes get me that file that tells me the various things for this identity and respond. I think the answer is probably yes to that, but I think we need to check the spec and confirm.
+
+(19:57 - 20:13)
+Absolutely. But I think that that was part of what Phil was trying to help us architect correctly. And so I think there's another action, which is to follow up with Phil to get confirmation of his advice.
+
+(20:14 - 20:24)
+So I have that on my list, so I'm happy to do that. I hope we don't need that search. Yeah, it could lead to money.
+
+(20:25 - 21:03)
+The only thing that I can see that we would need that search for is to distinguish between link types. But don't we distinguish between link types by examining the request? Isn't that encoded? Doesn't it say GS1 link blah or something else link blah? Yes, it is encoded within the URL as a query parameter. So when I use that resolved ID, I could be getting back a list of link types.
+
+(21:05 - 21:32)
+So here's my product, and the highest order request is give me the list of more things you have about this product. Or maybe I think there could be a protocol where you know you want the digital product passport, and you already know the link type, so you go straight to the digital product passport from the client. But I don't see where the search comes into either of those.
+
+(21:32 - 22:10)
+Yeah, so maybe I'm just saying if we run into a search problem that we can't solve at right time by maintaining the appropriate JSON file in the appropriate spot, then we'll have to fall back. But the starting assumption is that we can do this the cheapest and dirtiest and fastest and highest performance way possible, and then we'll add slow and expensive bits. So the search might be only used not as part of the – I can imagine a use case for search, but it's a low-volume use case for administrators of the platform or the user publish, the owners who are publishing content and checking what's there.
+
+(22:11 - 22:45)
+Absolutely. So with this Lambda over S3 architecture, we can – in an industrial scaled-out version of it, we could use Amazon Athena to run SQL over the JSON files, which is a big, slow, expensive batch job, which we might want to do if we had tens of thousands – if we had too many JSON files to walk through or fit in RAM. Yeah, there comes a point where this thing needs administration, right? And it's that place where I think you look at search and tables and filters and you're diagnosing a problem.
+
+(22:45 - 22:55)
+Why didn't that link get returned? You know, this sort of thing. And we can optimize as well later. Yeah, so I think we're confusing two things.
+
+(22:56 - 23:42)
+So one is what is our objective with this build that we're doing now versus what is our objective for running this long-term? And so our objective for the build now, I think we should say – I have a description that I have in my mind, but I think it's probably worth validating with the group. And that is an open-source reference implementation of the ISO standard. So it's not about running it at scale.
+
+(23:42 - 24:13)
+It's about having a reference implementation of the standard. Yeah, although the reference implementation – so this is going to the difference between what is free open-source reference implementation and what is implemented live service. So, yeah, you could put some of those advanced admin functions or extra functions in a live production service, not in the open-source reference implementation, right? That's right, yes.
+
+(24:13 - 24:40)
+So at some point, let's just acknowledge that we're doing two – well, we can acknowledge right now we're doing two things. There's a subset of the work we're doing which gets published as open-source reference implementation. That shouldn't be incompatible with extra features, capabilities, and the actual deployment of that open-source plus the extra capabilities in a live platform that we sell as a service.
+
+(24:47 - 25:29)
+So there's one other sort of use case that I'm not sure is in the ISO spec, but I think is important for us to be conscious of, and that's the idea of link resolvers linking to other link resolvers. That's a link type. Is it in the spec? It's not in the ISO spec, and as far as I'm aware, but really that's what we did already for AATP, right? The link type we get back from GS1 Global is a link resolver link type.
+
+(25:32 - 25:43)
+Yeah, but out of plaque, it might not be in the spec, but it's probably a requirement for us. Yeah. We can meet that requirement with the appropriate types of identifiers which are resolvable.
+
+(25:44 - 26:48)
+The appropriate type vocabulary of link types that get returned for a particular identifier scheme, or actually could be more than one identifier scheme, right? So I've got an identified thing, and I might want the product safety data sheet, the product passport, any one of 20 things about that, right? So the way the GS1 spec works, and I don't think this is in the ISO spec, the ISO spec is much simpler, right? It just says, given an identifier, here's a couple of patents to make a URL out of it, whereas the GS1 spec says more. It says when you resolve it and you hit the URL, you get back a list of link types, and here's a vocabulary of link types, and here's how you extend the vocabulary, all that stuff, right? So certainly the management of the link type vocabulary is going to be quite important here. That's probably a UNTP thing.
+
+(26:57 - 27:26)
+So we have the ISO spec, the GS1 spec, the right API that's obviously necessary, even though it's not in the spec, and then extended link types, et cetera. And an architecture where you haven't baked in a particular link resolution method. I think Zak's right that the ISO spec and the GS1 spec are the obvious initial candidates, right? But who knows? For some weird reason, an NLIS link resolver might need a different link resolution protocol.
+
+(27:27 - 27:44)
+It's extendable. Extendable. So what I would say is, yeah, the link vocabulary or however we describe that is extendable, but I'm not sure we necessarily want to spend a lot of time and energy on the GS1 spec.
+
+(27:45 - 27:53)
+Well, it's only that it's there. But you're right. I mean, yeah, yes and no.
+
+(27:53 - 28:54)
+I mean, the thing is, anyone buying this or wanting to use this will want to resolve GS1 identifiers. Although, of course, GS1 themselves are the first entry point there, right? Yeah, no, like if they want GS1 identifiers, then they should call GS1 because they're already engaging with them and paying them, right? So there's a valid scenario where all the GS1 global link resolver does is return a URL to another link resolver, right? In which case, then you're hitting the, this is exactly what AATP did, right? Then you're hitting an instance of this with a GS1 resolved thing. And expecting to get back the GS1 link type vocabulary.
+
+(28:55 - 29:25)
+I don't think this is a lot of extra work, right? This is- Well, we can start with what we have to do and then if it's cheap to keep going, do more. So we need to create a list of API routes that covers off ISO spec, our write spec, the GS1 spec probably, and is extendable. Create our list of API routes.
+
+(29:29 - 29:48)
+And from that list of API routes, we need to render. So, you know, whatever tech you're using, you can render some API docs from that collection of routes. That's part of the implementation.
+
+(29:51 - 30:39)
+And for each of those routes, we're going to need some business logic, which needs to be documented. And then that will require a unit test and an implementation, which is what gets unit tested. And initially to run the tests, there'll be- Oh, sorry.
+
+(30:48 - 31:07)
+Where's our list of people? Oh, sorry. I can see them here. Who do you want? What's Ashley? Who else is in here? We've got Nam.
+
+(31:08 - 31:11)
+Nam. And Zach, that's it. Okay.
+
+(31:12 - 31:32)
+So, Nam, what tech stack is going to be most convenient for you and Ash? I'm assuming it's a TypeScript node something. TypeScript. So do you have a framework that you would make APIs with? It's REST.
+
+(31:34 - 31:43)
+Yeah, yeah. REST is the style of the API, but is there like a node- Express. Node-Express? Yeah.
+
+(31:44 - 32:06)
+Okay. So this would be Express, or really the route. So with Node-Express, you can render out API docs? Yeah.
+
+(32:10 - 32:22)
+I don't think we can generate API docs. You can do that with any- Yeah. No, I want the API docs to be rendered from the routes, not standalone.
+
+(32:23 - 32:50)
+So the docs of the routes as built, not docs of what to build. I believe there's plenty of plugins, though, libraries to be able to do that, right? But Express itself does not natively construct the API documentation, right? Right. So, yeah, so Express is more of a container that runs in Node and has routes, but the routes aren't- Yeah, okay.
+
+(32:51 - 33:30)
+So there's a- We'll sideline that conversation about implementation tech. We'll come back to that. But so there's some implementation of the business logic, and there's a code that talks to JSON files, which goes to storage.
+
+(33:36 - 34:07)
+And so this is the code that uses the S3 library to talk to object store. So in terms of- Yeah, sorry, can I have a question here? Yes, yes, of course. We choose the file to store the data to externalization, so why not reuse the database? Yeah, so we don't want to use a database because databases are slow and expensive and they don't scale horizontally.
+
+(34:08 - 35:00)
+So rather than using a database, we'll use an object store, like MinIO S3, et cetera. So this code will have a MinIO S3 client, and it'll use that to talk to S3. Is that a mistake? I might be wrong, but is it a mistake? Hard baking that we must use S3? Well, it's only code that this implementation- So this is the nature of hexagonal architecture or clean architecture, is that when you instantiate this code, you pass in the thing that talks to the storage.
+
+(35:01 - 35:25)
+And so you have absolutely baked it in here, but this thing talks domain objects. So the business logic has no idea how the storage works. The business logic only works on domain objects, which are pure language constructs with no external dependencies, classes that you've created.
+
+(35:26 - 36:04)
+So when it goes to the repository, hey, I've got this resolved ID, get me the list of links, it goes, okay, here's your list of links. And whether it did a database query or a file system query or an S3 query or called some other API, you don't know because it's a black box. Yep. 
+
+Got it. Yep. And the big underlying assumption of all this is that it is possible to create at write time, not at read time, the file structure so that read time queries are blisteringly fast and simple.
+
+(36:05 - 36:24)
+Fast and cheap. And cheap. Yep. 
+
+And storage is cheap. Yes, and storage is cheap. And if there is a need for sort of horizontal, I mean, queries across the data store, that's not a part of it, a link resolution request, that's part of it, that's an admin service or something.
+
+(36:25 - 36:54)
+That's an administrative, yeah, that's a scaling request. And this is also probably why GS1's implementation is so clunky, is because they were answering the administration problem as well as the just pure link resolution problem. Yeah, so let's get all of that smarts and the slow and expensive thing that's outside the system, and then this is the fast and cheap thing.
+
+(36:56 - 37:06)
+And the slow and expensive stuff is what we sell as services. The fast and cheap stuff is what we give away as open source. Absolutely.
+
+(37:10 - 37:24)
+Or other people with their own slow and expensive thing can use the fast and cheap stuff themselves. That's right. There is potentially a slow and expensive thing in that DLR, which is the administrator search across all the data in the DLR.
+
+(37:24 - 37:31)
+But we can sell that. Yes, we sell that. That's why I drew this.
+
+(37:32 - 37:47)
+Yes. So this is our fast and cheap stuff, and it is literally just Lambda functions or however we deploy it, k8s or whatever, but it could be deployed serverlessly here. I'm pointing to something you can't see, of course.
+
+(37:48 - 38:15)
+It could be deployed serverlessly or something else cheap and horizontally scalable front end, which queries a very cheap and horizontally scalable back end. Again, whether that's S3, MinIO, clusters, cluster-cluster, whatever, broad, horizontal, fast and cheap storage. And this is the open source product.
+
+(38:24 - 38:50)
+We can value add that by future valuating services that are cost effective and value creating that write directly to the storage. Yes. And so some of the value adds that I can imagine already is long-term management of the storage.
+
+(38:50 - 38:58)
+So this credential needs to last for 20 years? Yes. That's something that... That's on the credential publishing side. Yes, yes.
+
+(38:58 - 39:56)
+So that's long-term publishing SLA. Sort of horizontal, like, what... Solving some of the GS1 problems, like, I've got a lot of... Like, I need to do an analysis across the entire ecosystem, those kinds of services. I'm not thinking about what they look like because I'm not sure, like, who... Like, my imagination of who's going to buy this type of thing is feeling like DeBortley-style organizations.
+
+(39:57 - 40:33)
+But if you imagine, like, a Procter & Gamble... So actually, when I talked to GS1 about this, I asked, who's doing their own digital link resolvers? And big, like, quick service or fast-moving consumer good organizations are because they realized that they need to maintain so much data that it became pretty important to them that they manage that. So they'd want some of these services as well. Complex event processing, big data stuff, long-term publishing SLAs.
+
+(40:33 - 40:45)
+Yep. Anyway, as things come up, if it's fast and cheap and wide, we give it away. If it's slow and expensive and complex and value-creating, we find a way to make the business out of it.
+
+(40:46 - 41:09)
+Steve, would issuing verifiable credentials for the identifiers be a part of the value add or the core functionality? Issuing credentials is a different product, right? It's what you're seeking. Yep. Publishing credentials that have been issued There's a question there.
+
+(41:09 - 41:18)
+Do we offer... Do we put in the... Yeah. Is that right? Yeah. Do we have... For issuing, anyway, yes.
+
+(41:19 - 41:55)
+Do we have... Do we think it's useful in the open-source product or harmless, I should say, in the open-source project to include basically an object store? So what... Yeah, so it is an object store. So do you mean... Whether you're returning a list of links or whether you're returning a credential is just a case of what you stick in the blog, isn't it? Okay, so the right API would be link list. And probably an object.
+
+(41:58 - 42:06)
+And credential publishing. Yeah, I think so. So I think the blue stuff is, you know, making that credential publishing richer.
+
+(42:07 - 42:30)
+Maybe it verifies things and it also maintains them for 10 years or whatever that is, right? That's not in the black stuff. Black stuff is just a really simple... So create, write, clobber, delete the link list. Yeah.
+
+(42:30 - 42:48)
+And publish credentials. Well, it's publish anything that might be returned at the end of the link. It could be a PDF of a material safety data sheet, right? It's just blobs.
+
+(42:48 - 42:53)
+Credential. Yeah. I think... I think, yeah.
+
+(42:54 - 43:11)
+I mean, there may be logic that says if the link type pointing to it says that it's a VC, it needs to actually be a VC. If the link type says that it's a PDF, it needs to be a PDF. Maybe.
+
+(43:12 - 43:21)
+Stuff. You know, these things. Then you get into virus scanners and shepherds, right? And we want to avoid any of that crap down here.
+
+(43:22 - 43:27)
+Virus scanning. Yeah. Put virus scanning down there.
+
+(43:27 - 43:30)
+It's valuable. It's low and expensive. That's for sure.
+
+(43:31 - 43:37)
+That's right. Oh, you wanted your credentials to not have viruses. Oh.
+
+(43:41 - 43:52)
+It's actually a classic example of a value add that we can just bolt on and go for five cents per thing. Yeah. No, I think it'll be important in terms of our hosting things.
+
+(43:53 - 44:07)
+Like, it's got to be included, but it's not part of the open source because it's just... It's admin. There's a lot of admin associated with that. Again, we could... It could be a separate open source product or not.
+
+(44:07 - 44:18)
+I mean, the only reason I'm saying that is because it wouldn't be the first open source virus scanning bucket-based thing. And somebody will clobber one together if we don't, so we might as well. Yeah.
+
+(44:19 - 44:40)
+Well, we'll see. Yeah. So I think from a design perspective, assuming that this is not entirely wrong, I... Sorry.
+
+(44:41 - 44:54)
+I think what we probably need to do first is pull these things together, these things. Define the routes. Discuss the business logic.
+
+(44:55 - 45:12)
+So I'll just... Yeah. So one, pull these things together. Two, document the business logic for each route.
+
+(45:13 - 45:42)
+And then three, mock up a storage path design that says this is how we'll implement the business logic, assuming that we're just using a hierarchical file system path kind of design. And so these are the different types of file paths we'll have. And these are the files.
+
+(45:42 - 45:57)
+This is what's in those files. I reckon we're ready to build it. And if we do that kind of thing and go, oh, well, we can't decide if the file system is like this.
+
+(45:57 - 46:47)
+There's two ways of getting what we need. We need to store it twice, or do we actually need an index of some sort other than the hierarchical file system index? But I think that will validate our assumption, which is that we can do this as fast and cheap as possible. Nam and Ash, do you disagree with that? Or do you have any other ideas or questions? Yep. 
+
+Currently, I have some questions related to the credential we store. I'm not clear about that. The credential here that we store as the VC, is it right or not? No.
+
+(46:47 - 47:41)
+So at this point, storing VCs, I think, is optional. Where am I? If you think a link resolver is nothing more than a list of URLs to get further stuff, that stuff could be a website, a PDF, a verifiable credential, all kinds of stuff, right? And if it's as opposed to a website or another link somewhere else, it could be a local file, you know, because the write operation has stored something, a PDF or a VC. I'm not sure that API for writing would know or care.
+
+(47:43 - 48:02)
+Maybe in the blue stuff or later, it does a verification when you write it. Really? You say you're publishing a PDF? This isn't the PDF, you know? Well, yeah, so there's possibly some link validation logic there. When you're publishing a list of links, it needs to be a list of links.
+
+(48:02 - 48:12)
+It can't be a chat picture. Well, it can't be just random text, right? It needs to be a valid URL or a valid URL. It can't be a node.
+
+(48:13 - 48:38)
+Yeah, so that list of links needs to be valid. But then, Steve, what you're saying is the things that the links point to need to be valid. So if you have a list of links that are all broken, you know, HTTP links that 404, we wouldn't stop you from doing that here.
+
+(48:38 - 49:01)
+But actually going through and checking everything and having a link manager thing that goes through and checks all of your links every hour, make sure they're still working and raises an alarm if it's not working and tells you, hey, you've got some credentials that are linking to broken things, maybe you should republish them. Or you have verifiable credentials that are no longer valid. They've been revoked, yeah.
+
+(49:02 - 49:22)
+Yeah, those are all value-added services that are beyond the scope of the link resolver because that's expensive, right? Yeah. Yeah, so continuous kind of quality control, broken links, invalid types, all that sort of stuff. Revoked credentials.
+
+(49:27 - 49:58)
+And revoked credentials is probably one of the most important ones that we would want to have early, right, for our customers. Yeah, so this is a command center looking at these things. You have it on the wall in your office, you know, link errors and things.
+
+(49:59 - 50:25)
+Yeah, if I'm DeBortley Wines and I've got goods out in the marketplace and my link resolver is how I am compliant and making my products more valuable, if my link resolver service is deteriorating for whatever reason, I need to know because it means my products out in the marketplace are deteriorating. Yeah, yeah. And there's probably a sense of analytics over this as well.
+
+(50:25 - 50:31)
+That's what I mean by a command center. It's like there's all sorts of things. Everything important is being monitored and managed.
+
+(50:31 - 50:40)
+Everything that changes is being watched. Yeah, I don't want to get sucked into here. I just know that this is the gift that keeps on giving.
+
+(50:40 - 50:49)
+We keep on finding things to do down here as the world learns how to do this work. The blue stuff, yeah. So the black stuff is what we put in the UN repo.
+
+(50:49 - 51:00)
+The blue stuff is what we add on and we prioritize that based on demand basically. Yeah. And we do experiments, quick and cheap experiments to see if we can get that to work.
+
+(51:06 - 51:18)
+So, Nam, your question about VCs, I think maybe we should just talk about that for a minute to make sure that we're all on the same page there. Yeah. And just one other little thing.
+
+(51:19 - 52:18)
+If we start that project in a UN GitHub for a link resolver and we make an initial contribution, there's nothing to say that 20 other devs might join and start enhancing the thing and adding things, would that drive at all our thinking about this layering and what happens when somebody adds some cool stuff to the open source that we want in our... We wouldn't try to interfere with that. I think what we'd say is the goal of the open source is to be fast and cheap and correct. And so if architecture is correct because all of this business logic has unit tests and... Well, I also think that's where it goes to what the purpose is, which is the purpose is a reference implementation of the ISO spec.
+
+(52:20 - 52:51)
+Yep. And if there are extensions... Well, they may or may not belong. It may be worthwhile to have those extensions there, but that might be... I think it's a reference implementation for a link resolver where the initial resolution methods are the ISO spec, but it wouldn't be incompatible to adding... If the open source community wants to add another link resolution method or something, you'll go nuts.
+
+(52:55 - 53:23)
+Yep, I'm comfortable with that, but I would mean what we would want... As long as the extensions were purely extensions and didn't break core, right? That's right. And we actually are adding to core because we're adding the right spec. So maybe this is a reason why we would do the writing as a different thing.
+
+(53:25 - 54:03)
+So in terms of this, we could have... I'm going to clean this up a little bit. Yeah, so the ISO spec won't say anything about writing. Exactly.
+
+(54:04 - 54:12)
+But the open source MVP has to allow you to write something. Otherwise, it's useless. Not an MVP.
+
+(54:13 - 54:24)
+Yeah. It's not a V. Yeah. But we've already discovered heaps of things in that blue area on the other diagram that we're not putting in the open source thing.
+
+(54:24 - 54:52)
+There are values that any serious client wants, right? So I don't think there's much risk here in terms of... Yeah, so I guess these things, VC publishing, getting VCs, DLR editing, and then the ISO spec. Plus, so this is resolving. Getting back to the list.
+
+(55:00 - 55:22)
+Resolve list from ID. So resolve list from identifier of a scheme. Is that what the ISO API is? The ISO doesn't specify an API.
+
+(55:22 - 55:28)
+It just says, given an identifier, here's a couple of different ways you can construct a URL. That's all it says. Okay.
+
+(55:28 - 55:39)
+It's not an API spec, doesn't say anything about writing, doesn't say anything about... But what we're building is a reference implementation of that, which will have an API spec. Yeah. I think we're building a little bit more than that because it really is a nothing.
+
+(55:40 - 55:47)
+Right. Right. In fact, the reference implementation of the ISO spec wouldn't be the link resolver at all.
+
+(55:47 - 55:53)
+It would be the client that says, oh, I've got an ID. I'm going to construct a URL. That's all it says.
+
+(56:06 - 56:31)
+The ISO spec's talking about what the thing on the bottom right does. Okay. When you publish a VC, it's not a VC, is it? It's any credential.
+
+(56:32 - 56:58)
+Yeah. What do you want? Sorry. And really, what we're publishing is a link associated with an identifier.
+
+(56:59 - 57:24)
+Right? With some details about how to, what category of link it is and what we would say. It's published a credential of a type associated with an identifier. Yeah.
+
+(57:25 - 57:33)
+So that's an extra feature, right? But I think it's pretty trivial. The core of it is actually publishing links. Yeah.
+
+(57:33 - 57:47)
+So this is not MVP. Yeah. It assumes that you're still somewhere else.
+
+(57:48 - 57:59)
+Yeah. So this is get links credential of type. This is the website.
+
+(58:06 - 58:40)
+So where's the get list of links? That was all list from identifier of a scheme. So if we just, this could be. Ma'am, did you want to tell him? We could have is three.
+
+(58:43 - 58:48)
+Is it the connection problem? Yeah. Yeah. I've got the same issue in mind.
+
+(58:52 - 59:02)
+What's that? You guys can't see us. We can see you, but the internet connection is unstable. It seems better now though.
+
+(59:03 - 1:00:00)
+Yeah. So we could actually deploy it as three separate containers. And resolve link list is just the read API for resolving list of links.
+
+(1:00:01 - 1:00:22)
+Edit a link list is just the right API, which is non normative, not part of the spec, but how are you going to need one? If you're going to do this in the reference implementation, and then this thing is posted. Yes. Yeah.
+
+(1:00:24 - 1:00:54)
+And the reason I'd separate read service and write services, a reason to separate read service and write service is that this thing gets deployed to the cloud and a public endpoint where anyone can see it. And this thing doesn't. It's on a different network.
+
+(1:00:54 - 1:01:03)
+It's running inside your firewall. It's connecting to Amazon S3 using your Amazon credentials, which have right permissions. And that's how you're doing.
+
+(1:01:04 - 1:01:10)
+You know, it's part of your system integration. It's not a public thing. Let me mention a few use cases of right here.
+
+(1:01:10 - 1:01:39)
+I might go to your question of, I'm Debotoli Wines and I am a GS1 customer. So the first thing any user sees out there is actually a GS1 ID. And the link resolution process will drive them to ask GS1, not us, not this, where to look.
+
+(1:01:39 - 1:01:48)
+Yeah. And it goes to, it gives back a link type, which is a link which points to this. Okay.
+
+(1:01:50 - 1:02:12)
+Then you hit this link with this particular GT. And Debotoli, for whatever reason, decides to have a separate credential store, not using this or some other. Maybe one of the links is for every product, there's information on the website about that product.
+
+(1:02:14 - 1:02:33)
+And they've got maybe Depot, somebody's got 10,000 products. And they say, ah, we've just changed the URL of our web. And I'm going to do a bulk update to 10,000 links, which are on different parts.
+
+(1:02:38 - 1:02:59)
+Maybe, you know. That might need to rewrite 10,000 files. How do I, when all I've got here is object store, to say, I've changed my website, which links do I have to update? This is probably where the database comes in.
+
+(1:02:59 - 1:03:07)
+Yeah, maybe. I mean, you could crawl the API and do it. Messy, isn't it? Well, it depends.
+
+(1:03:08 - 1:03:39)
+But this is, I think this, again, goes to the fact that you're still designing a system where the queries are fast, cheap, and scalable, and the updates are slower, more expensive, and richer. So is 10,000 products a big number? Probably, but maybe if it goes down to, for example, there might be specific information about every serialized instance. And I'm a drug company making a million packets of drugs.
+
+(1:03:39 - 1:03:53)
+But all of those million packets of the drugs point to the same website for further information. But I've also got a little bit of anti-counterfeiting or something for every serialized packet. So I've got this kind of massively different granularity.
+
+(1:03:53 - 1:04:12)
+Yeah, but editing JSON files through an API, let's say you're doing 10 a second. If you're happy to wait 10 minutes, that's 6,000 records in 10 minutes. Yeah, and if you've got 6 million, that's infeasible.
+
+(1:04:14 - 1:04:20)
+Yeah. But we don't have those customers yet, I think. No, no, I realize that.
+
+(1:04:20 - 1:04:51)
+I'm just saying we should be thinking about the administrative side of this and dreaming up, yes, they are dreaming up, but realistic dreams. Because eventually you're going to hit these link resolvers either with very high-level things like product category, but also potentially serialized things. And sometimes the serialized things are millions of objects.
+
+(1:04:51 - 1:05:00)
+And then the maintenance thing does get interesting. But this is horizontally scaled. So I'm drawing one S3 bucket.
+
+(1:05:00 - 1:05:17)
+But the way objects stores work is that you have lots of nodes and every object is stored on a few nodes. You might have 1,000 nodes and each object is on three nodes. And when you go to find that object, the nodes talk to each other and work out which one's got it, and that's the one that gives it to you.
+
+(1:05:17 - 1:05:29)
+And so when you write, again, it says, well, who's got a copy of this? There's only two copies. Well, you need to do an update and you've got to keep one. And so that stuff is all buzzing away beneath the surface.
+
+(1:05:30 - 1:06:00)
+But what you're really talking about is the workload of rematerializing millions of things. Yes, which I'm not saying would be an everyday happening, right? When a pharmaceutical company changes the URL of their website or something and needs to update six million records, well, it's not every day, right? How wide you can do it is how many nodes you've got. And if you need to make big, wide writes, you need lots of nodes.
+
+(1:06:00 - 1:06:47)
+Yes, and you still don't know where to write, though, right? Because what you've done is written a structure that has some sort of – anyway, we're getting to the blue stuff, not the black stuff, right? I'm just saying in considering the architecture of the black stuff, do we need to think – would it be impacted differently? Would it be anything different if we suddenly realized that in the blue stuff we need to say, oh, let's make it easy to update six million records? No, I wouldn't change the record. Yes. What it might mean is we have some sort of index in the blue that allows you to say, well, which 4.5 million of those six million have this link type that needs to be updated? And so you know where to look.
+
+(1:06:48 - 1:07:07)
+No, I wouldn't do it like that. I'd just modify the black stuff to say have a look for the file, and if it's not there, have a look someplace else. And then I'd have a dynamic database, you know, expensive solution that I was using to regenerate everything.
+
+(1:07:08 - 1:07:18)
+And I'd say, okay, we're going to regenerate this 100 million records. You, asynchronous process, go through and start deleting every 100 million records one by one. You're deleting files.
+
+(1:07:18 - 1:07:47)
+And go as wide as fast as you can, hundreds of us. And process to regenerate. We've lost them again, haven't we? Yep.
+
+(1:07:47 - 1:08:25)
+Getting stupid. Okay. So while we're – there they left.
+
+(1:08:26 - 1:08:50)
+There they're back. Are you guys getting the sort of lightweight piece that we want to focus on first? Is that pretty understandable at this point? Yep. But I have some questions I need to ask when Steve and Chris are back.
+
+(1:08:51 - 1:09:22)
+Like currently we have existing GS1 DLR, and how we will get the data directly to the GS1 DLR service, or we will write that to the MPB DLR? Yeah, sorry. For some reason, our internet went to shit. Can you hear us? Yeah, we can.
+
+(1:09:22 - 1:09:47)
+Yeah. We've reached the end of our allocated hour. The question here is we're not solidly understanding to start pulling together a design document, at least for a first review and then update between Ash and Nan.
+
+(1:09:52 - 1:10:00)
+You're kind of breaking up again, Steve. I'm not sure that question came through clearly. So what else do you – we're running out of time.
+
+(1:10:00 - 1:10:17)
+What do you need? What else do you need? What else to get started? Yep. I have one question. At the first whiteboard, Chris, you wrote the – It was on the whiteboard.
+
+(1:10:19 - 1:11:05)
+I remember the – okay. My question here is currently we have the existing GS1 DLR and that has the data here. And when that interacts with the MPB DLR, that will – the MPB DLR will call directly to the GS1 DLR to get the data or to get the link resolver or the link resolver from the GS1 DLR will store in the MPB DLR already? What was that question? So I think – I drew it differently.
+
+(1:11:06 - 1:11:24)
+I drew it where one service had all of the features and then another service where I broke it up. I don't think it really matters. You can do it all as one service and then break it up later if you wanted to.
+
+(1:11:26 - 1:12:07)
+The – I think in terms of publishing credentials and fetching credentials, that's a fairly simple set of features that we can add later when we get around to it. We don't need to consider them part of MVP. So really the MVP has just got the two sets of features, the reading the list, which is basically a – which is not much more than serving up JSON straight from the disk, I wouldn't imagine, and then writing those JSON files.
+
+(1:12:07 - 1:12:25)
+And I think most of that effort will go into writing correct JSON files in the first instance. Does that answer the question? Does that answer the question, no? No. Not sure.
+
+(1:12:26 - 1:12:58)
+Yeah. Yeah. I was just going to say, is the question, will we use the MVP DLR to serve the links to the credentials we're storing, or will the MPV have a link to the DLR service that we are currently using? Is that the question? Not yet.
+
+(1:12:59 - 1:13:26)
+I'm not sure. The question here is the MPV, the MPV here will cover the GS1 spec. So if we have the GS1 link resolver already, and how we connect to the existing one from the MPV? So we don't need to connect to it.
+
+(1:13:27 - 1:13:48)
+There's two different implementations of the same thing. So there's no need to connect to it. It's just – although I suppose, to Steve's point, the GS1 link resolver could have a link that says more information over here.
+
+(1:13:49 - 1:14:24)
+So when you ask about the GS1 link resolver now, do you mean the actual global GS1 operating link resolver, which is the thing that gives you back the list of links for a GS1 ID? And in our case, we run. So this is now our instance of the GS1 open-source software. So there's two links.
+
+(1:14:24 - 1:14:56)
+The one that we are using, which is the GS1 thing, all it does is give back a link to the one we're operating. So in this future case, the global GS1 link resolver will still exist. And some customer says, I'd like to use this, which means we're standing in front of the link resolver, a bit like the one we did for AATP, but instead of using that GS1 open-source software, we're using this stuff we're writing.
+
+(1:14:57 - 1:15:08)
+And it would work much the same way. Somebody scans the barcode, goes to the global GS1 register, and that says, look over here. But in this case, it's pointing at our new link resolver.
+
+(1:15:08 - 1:15:25)
+So the old link resolver that we operated has no relationship to this. We would replace that with this. Does that answer the question? Yeah.
+
+(1:15:25 - 1:15:38)
+That's an excellent question. We'll stop drawing it. So did we lose the... We did.
+
+(1:15:39 - 1:15:45)
+But we probably have them in the video you're recording. At least they're on the screen recording. Yeah.
+
+(1:15:48 - 1:15:58)
+We're recording. I'll send the link out, which means somebody can freeze frame or something. And on the right, look at the diagrams.
+
+(1:15:59 - 1:16:01)
+Oh, wait a minute. Oh, no, that's people. That's annoying.
+
+(1:16:04 - 1:16:12)
+We have to use a different one. Anyway. All right.
+
+(1:16:12 - 1:16:17)
+Should we wrap it there? It's getting a little frustrating, I think. Okay. Have we done yet? Yeah.
+
+(1:16:18 - 1:16:35)
+Yeah, it's enough. Okay. So why don't we... Ash and Nan, do you want to bounce something off me in a few days, early next week for review? Like a reverse brief? Yep.
+
+(1:16:35 - 1:16:42)
+I think we've got a shit internet connection. They can't hear us. So did that question get through? Yes.
+
+(1:16:42 - 1:16:45)
+It did. Awesome. Okay.
+
+(1:16:49 - 1:17:10)
+So if you guys look back, you know, Tuesday, give or take, whenever you're ready, with a reverse brief, we'll review it, and then feel confident that we're on the right track. Yeah. So tomorrow is basically all day allocated for Ash and Nan to talk about and design and draw up and, you know, and the same one.
+
+(1:17:11 - 1:17:14)
+Yeah. I'm being vague about the amount of time that you need. Yeah.
+
+(1:17:14 - 1:17:20)
+It's your deadline, not mine. I'm available tomorrow. I will be available next week.
+
+(1:17:22 - 1:17:24)
+All right, then. Thanks, everyone. We'll see you.
+
+(1:17:24 - 1:17:28)
+I'll send a recording link when it tells me. Yep. Cool.
+
+(1:17:28 - 1:17:31)
+Okay. Thanks, guys. All right.
+
+(1:17:31 - 1:17:32)
+Thank you.
